@@ -3,40 +3,19 @@ import { NextRequest, NextResponse } from "next/server"
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-const ANALYSIS_PROMPT = `You are an expert social media strategist and viral content analyst with deep knowledge of TikTok, Instagram Reels, and YouTube Shorts algorithms.
-
+const ANALYSIS_PROMPT = `You are an expert social media strategist and viral content analyst for platforms like TikTok, Instagram Reels, and YouTube Shorts.
 Analyze this content and return ONLY a raw JSON object — no markdown, no code fences, no explanation. Your entire response must be valid JSON parseable by JSON.parse().
 
-Return this exact structure:
-{
-  "viralityScore": <integer 0-100>,
-  "scoreLabel": "<one of: Viral Ready|Strong Potential|Needs Work|Major Revamp Needed>",
-  "breakdown": {
-    "hookStrength": <0-100>,
-    "pacing": <0-100>,
-    "thumbnailRating": <0-100>,
-    "captionOptimization": <0-100>,
-    "emotionalAppeal": <0-100>,
-    "trendAlignment": <0-100>
-  },
-  "hookAnalysis": {
-    "rating": "<one of: Weak|Moderate|Strong|Exceptional>",
-    "summary": "<2-3 sentence analysis of the opening hook and first impression>",
-    "suggestions": ["<specific actionable suggestion>", "<specific actionable suggestion>", "<specific actionable suggestion>"]
-  },
-  "captionSuggestions": {
-    "issues": ["<issue 1>", "<issue 2>", "<issue 3>"],
-    "rewrittenCaption": "<optimized caption under 150 chars with emoji and CTA>",
-    "hashtagRecommendations": ["#tag1", "#tag2", "#tag3", "#tag4", "#tag5"]
-  },
-  "trendingAudio": [
-    {"name": "<trending audio name>", "uses": "<e.g. 2.1M>", "trend": "<one of: ↑ Hot|🔥 Peak|↑ Rising|→ Steady>"},
-    {"name": "<trending audio name>", "uses": "<e.g. 890K>", "trend": "<trend label>"},
-    {"name": "<trending audio name>", "uses": "<e.g. 4.3M>", "trend": "<trend label>"}
-  ],
-  "competitorInsights": "<2-3 sentences comparing content patterns of top performers in this niche vs this submission>",
-  "actionPlan": ["<top priority action>", "<second priority action>", "<third priority action>", "<fourth priority action>"]
-}`
+Include these fields:
+1. "score": number (0-100)
+2. "breakdown": { "hook": number, "pacing": number, "visuals": number, "emotionalAppeal": number }
+3. "hookAnalysis": { "rating": string, "feedback": string }
+4. "actionPlan": string[] (3-4 specific steps)
+5. "captionSuggestions": { "hook": string, "body": string, "hashtags": string[] }
+6. "transcriptAnalysis": { "strengths": string[], "improvements": string[] }
+7. "timeline": { "timestamp": string, "description": string, "impact": "positive" | "negative" }[] (2-3 key moments)
+
+Be critical but constructive. Focus on what makes content go viral: high retention, emotional resonance, and clear value or entertainment.`
 
 export async function POST(req: NextRequest) {
   try {
@@ -79,10 +58,10 @@ export async function POST(req: NextRequest) {
       headers: { 
         "Content-Type": "application/json",
         "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-        "HTTP-Referer": "https://goviral-analyzer.vercel.app", // Optional but good for OpenRouter
-        "X-Title": "GoViral Analyzer"
+        "HTTP-Referer": "https://goviral-analyzer.vercel.app",
+        "X-Title": "Viral Analyzer"
       },
-      body: JSON.stringify(openRouterBody),
+      body: JSON.stringify(openRouterBody)
     })
 
     if (!res.ok) {
@@ -110,13 +89,11 @@ export async function POST(req: NextRequest) {
         }, { status: 413 })
       }
 
-      // Return the actual error message from OpenRouter if possible
       let message = "The AI provider returned an error."
       try {
         const parsed = JSON.parse(errText)
         if (parsed.error?.message) message = parsed.error.message
       } catch (e) {
-        // Not JSON, use short snippet of text
         if (errText.length > 0) message = errText.substring(0, 150)
       }
       
@@ -137,13 +114,8 @@ export async function POST(req: NextRequest) {
     }
 
     const rawText = data.choices?.[0]?.message?.content ?? ""
-    
-    if (!rawText) {
-      console.error("[analyze] Empty response from OpenRouter:", data)
-      return NextResponse.json({ error: "Empty response from AI service" }, { status: 502 })
-    }
+    console.log("[analyze] Raw Response:", rawText)
 
-    // Robust JSON extraction
     let clean = rawText.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/m, "").trim()
     const start = clean.indexOf("{")
     const end = clean.lastIndexOf("}")
@@ -151,8 +123,13 @@ export async function POST(req: NextRequest) {
       clean = clean.slice(start, end + 1)
     }
 
-    const result = JSON.parse(clean)
-    return NextResponse.json(result)
+    try {
+      const result = JSON.parse(clean)
+      return NextResponse.json(result)
+    } catch (parseErr) {
+      console.error("[analyze] JSON Parse Error:", parseErr, "Cleaned Text:", clean)
+      return NextResponse.json({ error: "Failed to parse AI response. The model might not have followed the JSON format." }, { status: 500 })
+    }
   } catch (err) {
     console.error("[analyze] Error:", err)
     return NextResponse.json({ error: "Analysis failed. Please try again." }, { status: 500 })

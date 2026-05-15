@@ -28,7 +28,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geist.className} antialiased flex flex-col min-h-screen`}>
+      <body suppressHydrationWarning className={`${geist.className} antialiased flex flex-col min-h-screen`}>
         <AuthProvider>
           <SubscriptionProvider>
             <div className="flex-1 flex flex-col">

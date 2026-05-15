@@ -1,119 +1,106 @@
 "use client"
 
-import { useState, useRef, useCallback } from "react"
-import { Button } from "@/components/ui/button"
+import { useState, useCallback, useRef, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Upload, Flame, Zap, Music, Users, ListChecks,
-  RotateCcw, AlertCircle, CheckCircle2, XCircle, ArrowRight,
+import { Button } from "@/components/ui/button"
+import { Progress } from "@/components/ui/progress"
+import { 
+  Upload, 
+  Flame, 
+  TrendingUp, 
+  AlertCircle, 
+  FileText, 
+  Zap, 
+  ListChecks, 
+  Music, 
+  ArrowRight, 
+  XCircle, 
+  RotateCcw,
+  Play,
+  Clock,
+  CheckCircle2,
+  ChevronRight,
+  Info,
+  Copy,
+  Share2,
+  Download,
+  X,
+  Sparkles
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-interface BreakdownScores {
-  hookStrength: number
-  pacing: number
-  thumbnailRating: number
-  captionOptimization: number
-  emotionalAppeal: number
-  trendAlignment: number
-}
-
-interface AnalysisResult {
-  viralityScore: number
-  scoreLabel: string
-  breakdown: BreakdownScores
+type AnalysisResult = {
+  score: number
+  breakdown: {
+    hook: number
+    pacing: number
+    visuals: number
+    emotionalAppeal: number
+  }
   hookAnalysis: {
-    rating: "Weak" | "Moderate" | "Strong" | "Exceptional"
-    summary: string
-    suggestions: string[]
+    rating: string
+    feedback: string
   }
-  captionSuggestions: {
-    issues: string[]
-    rewrittenCaption: string
-    hashtagRecommendations: string[]
-  }
-  trendingAudio: { name: string; uses: string; trend: string }[]
-  competitorInsights: string
   actionPlan: string[]
+  captionSuggestions: {
+    hook: string
+    body: string
+    hashtags: string[]
+  }
+  transcriptAnalysis: {
+    strengths: string[]
+    improvements: string[]
+  }
+  timeline: {
+    timestamp: string
+    description: string
+    impact: "positive" | "negative"
+  }[]
 }
-
-// ─── Mock data for demo mode ──────────────────────────────────────────────────
 
 const MOCK_RESULT: AnalysisResult = {
-  viralityScore: 73,
-  scoreLabel: "Strong Potential",
+  score: 84,
   breakdown: {
-    hookStrength: 82,
-    pacing: 68,
-    thumbnailRating: 71,
-    captionOptimization: 65,
-    emotionalAppeal: 79,
-    trendAlignment: 74,
+    hook: 92,
+    pacing: 78,
+    visuals: 85,
+    emotionalAppeal: 81
   },
   hookAnalysis: {
     rating: "Strong",
-    summary:
-      "Your opening 3 seconds creates strong curiosity with a bold visual statement. The text overlay appears quickly, but the transition feels slightly rushed — viewers may not register your core message before scrolling.",
-    suggestions: [
-      "Start with a face close-up or reaction shot to trigger mirror neurons",
-      "Add a pattern interrupt — an unexpected sound or color flash in frame 1",
-      "Put your boldest claim or key number in the first 2 seconds as on-screen text",
-    ],
+    feedback: "Exceptional visual hook in the first 1.5 seconds. The high-contrast text and immediate movement will stop the scroll effectively."
   },
-  captionSuggestions: {
-    issues: [
-      "Too long — TikTok captions over 150 chars get truncated in feed",
-      "No question to drive comment engagement",
-      "Missing a CTA above the fold",
-    ],
-    rewrittenCaption:
-      "POV: I tested every viral trick for 30 days 👀 The results shocked me. Which one would you try first? 👇",
-    hashtagRecommendations: [
-      "#viral",
-      "#contentcreator",
-      "#growthhacks",
-      "#fyp",
-      "#socialmediatips",
-    ],
-  },
-  trendingAudio: [
-    { name: "original sound – lowkey.wav", uses: "2.1M", trend: "↑ Hot" },
-    { name: "bad idea right? – Olivia Rodrigo", uses: "890K", trend: "↑ Rising" },
-    { name: "Luther – Kendrick Lamar", uses: "4.3M", trend: "🔥 Peak" },
-  ],
-  competitorInsights:
-    "Top performing content in your niche averages 8–12 cuts per minute with 2–3 text overlays. Your video sits at ~4 cuts/min — faster pacing could match viewer expectations. Competitors consistently use duet/stitch formats for 40% higher engagement.",
   actionPlan: [
-    "Re-cut your hook to lead with the most surprising or emotional moment",
-    "Add trending audio from the recommendations below to 3× your distribution reach",
-    "Shorten caption to under 150 chars and add a direct question to drive comments",
-    "Test a split-screen or reaction format for your next post in this series",
+    "Trim the 2-second dead space at the 5-second mark to maintain pacing",
+    "Increase text size of the final CTA for better mobile readability",
+    "Add a more aggressive color grade to make the visuals pop"
   ],
+  captionSuggestions: {
+    hook: "The secret trick I wish I knew earlier... 🤫",
+    body: "You won't believe how simple this actually is. Save this for your next video!",
+    hashtags: ["#contentcreator", "#viraltips", "#growth"]
+  },
+  transcriptAnalysis: {
+    strengths: [
+      "Clear and energetic voice-over",
+      "Excellent use of trend-specific keywords"
+    ],
+    improvements: [
+      "Slow down the intro by 0.5s for better clarity",
+      "Add more emphasis on the final call to action"
+    ]
+  },
+  timeline: [
+    { timestamp: "0:01", description: "Visual hook: Pattern interrupt with bold text", impact: "positive" },
+    { timestamp: "0:05", description: "Pacing dip: Too much dead air during transition", impact: "negative" },
+    { timestamp: "0:12", description: "Climax: High emotional payoff with transition", impact: "positive" }
+  ]
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function scoreColor(v: number) {
-  if (v >= 75) return "text-emerald-400"
-  if (v >= 50) return "text-amber-400"
-  return "text-rose-400"
-}
-
-function barColor(v: number) {
-  if (v >= 75) return "bg-emerald-500"
-  if (v >= 50) return "bg-amber-500"
-  return "bg-rose-500"
-}
-
-function hookBadgeClass(rating: string) {
-  if (rating === "Exceptional" || rating === "Strong")
-    return "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
-  if (rating === "Moderate")
-    return "bg-amber-500/15 text-amber-400 border border-amber-500/30"
-  return "bg-rose-500/15 text-rose-400 border border-rose-500/30"
-}
+// ─── Utilities ────────────────────────────────────────────────────────────────
 
 function toBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -124,69 +111,161 @@ function toBase64(file: File): Promise<string> {
   })
 }
 
+function resizeImage(file: File, maxDim: number = 1200): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement("canvas")
+        let width = img.width
+        let height = img.height
+        if (width > height) {
+          if (width > maxDim) {
+            height *= maxDim / width
+            width = maxDim
+          }
+        } else {
+          if (height > maxDim) {
+            width *= maxDim / height
+            height = maxDim
+          }
+        }
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext("2d")
+        ctx?.drawImage(img, 0, 0, width, height)
+        resolve(canvas.toDataURL("image/jpeg", 0.85).split(",")[1])
+      }
+      img.src = e.target?.result as string
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function ScoreRing({ score }: { score: number }) {
-  const size = 140
-  const stroke = 12
-  const r = (size - stroke) / 2
-  const circ = 2 * Math.PI * r
-  const offset = circ - (score / 100) * circ
-  const color =
-    score >= 75 ? "#34d399" : score >= 50 ? "#fbbf24" : "#f87171"
-
+function Switch({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <svg
-      width={size}
-      height={size}
-      style={{ transform: "rotate(-90deg)", flexShrink: 0 }}
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className={cn(
+        "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50",
+        checked ? "bg-primary" : "bg-input"
+      )}
     >
-      <circle
-        cx={size / 2} cy={size / 2} r={r}
-        fill="none" stroke="currentColor"
-        strokeWidth={stroke}
-        className="text-border"
+      <span
+        className={cn(
+          "pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform",
+          checked ? "translate-x-4" : "translate-x-0"
+        )}
       />
-      <circle
-        cx={size / 2} cy={size / 2} r={r}
-        fill="none" stroke={color}
-        strokeWidth={stroke}
-        strokeDasharray={circ}
-        strokeDashoffset={offset}
-        strokeLinecap="round"
-        style={{ transition: "stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1)" }}
-      />
-      <text
-        x="50%" y="50%"
-        textAnchor="middle"
-        dominantBaseline="middle"
-        style={{
-          transform: "rotate(90deg)",
-          transformOrigin: "50% 50%",
-          fontSize: 32,
-          fontWeight: 700,
-          fill: color,
-          fontFamily: "inherit",
-        }}
-      >
-        {score}
-      </text>
-    </svg>
+    </button>
   )
 }
 
-function MiniBar({ label, value }: { label: string; value: number }) {
+function ScoreRing({ score }: { score: number }) {
+  const [displayScore, setDisplayScore] = useState(0)
+  
+  useEffect(() => {
+    const duration = 1500
+    const start = 0
+    const end = score
+    const startTime = performance.now()
+
+    const animate = (currentTime: number) => {
+      const elapsed = currentTime - startTime
+      const progress = Math.min(elapsed / duration, 1)
+      const easeOut = 1 - Math.pow(1 - progress, 3) 
+      setDisplayScore(Math.floor(start + (end - start) * easeOut))
+
+      if (progress < 1) {
+        requestAnimationFrame(animate)
+      }
+    }
+
+    requestAnimationFrame(animate)
+  }, [score])
+
+  const size = 160
+  const stroke = 14
+  const r = (size - stroke) / 2
+  const circ = 2 * Math.PI * r
+  const offset = circ - (displayScore / 100) * circ
+  
+  // Oceanic Frost palette
+  const getScoreColor = (s: number) => {
+    if (s >= 75) return "#22d3ee" // Cyan 400 — Viral Ready
+    if (s >= 50) return "#38bdf8" // Sky 400 — Moderate
+    return "#94a3b8" // Slate 400 — Needs Work
+  }
+  
+  const color = getScoreColor(score)
+
   return (
-    <div className="mb-3">
-      <div className="flex justify-between text-sm mb-1.5">
-        <span className="text-muted-foreground">{label}</span>
-        <span className={cn("font-semibold tabular-nums", scoreColor(value))}>
+    <div className="relative inline-flex items-center justify-center">
+      <svg
+        width={size}
+        height={size}
+        style={{ transform: "rotate(-90deg)", flexShrink: 0, overflow: "visible" }}
+      >
+        <defs>
+          <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="4" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          </filter>
+        </defs>
+        <circle
+          cx={size / 2} cy={size / 2} r={r}
+          fill="none" stroke="currentColor"
+          strokeWidth={stroke}
+          className="text-muted/20"
+        />
+        <circle
+          cx={size / 2} cy={size / 2} r={r}
+          fill="none" stroke={color}
+          strokeWidth={stroke}
+          strokeDasharray={circ}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          filter="url(#glow)"
+          className="transition-all duration-300 ease-out"
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-4xl font-black tracking-tighter" style={{ color }}>{displayScore}</span>
+        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Score</span>
+      </div>
+    </div>
+  )
+}
+
+function MiniBar({ label, value, tooltip }: { label: string; value: number; tooltip?: string }) {
+  return (
+    <div className="space-y-1.5 py-1">
+      <div className="flex items-center justify-between group">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-tight">{label}</span>
+          {tooltip && (
+            <div className="relative">
+              <Info className="w-3 h-3 text-muted-foreground/50 cursor-help" />
+              <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-48 p-2 bg-popover text-[10px] rounded border border-border shadow-lg z-50 text-popover-foreground">
+                {tooltip}
+              </div>
+            </div>
+          )}
+        </div>
+        <span className={cn("text-xs font-black tabular-nums", scoreColor(value))}>
           {value}
         </span>
       </div>
-      <div className="h-1.5 rounded-full bg-border overflow-hidden">
-        <div
-          className={cn("h-full rounded-full transition-all duration-1000", barColor(value))}
+      <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+        <div 
+          className={cn("h-full rounded-full transition-all duration-1000 ease-out", scoreBg(value))}
           style={{ width: `${value}%` }}
         />
       </div>
@@ -194,18 +273,51 @@ function MiniBar({ label, value }: { label: string; value: number }) {
   )
 }
 
+function scoreColor(v: number) {
+  if (v >= 75) return "text-cyan-400"
+  if (v >= 50) return "text-sky-400"
+  return "text-slate-400"
+}
+
+function scoreBg(v: number) {
+  if (v >= 75) return "bg-cyan-400"
+  if (v >= 50) return "bg-sky-400"
+  return "bg-slate-400"
+}
+
+function hookBadgeClass(rating: string) {
+  const r = rating.toLowerCase()
+  // Positive ratings → Cyan
+  if (r.includes("exceptional") || r.includes("strong") || r.includes("excellent") || r.includes("great") || r.includes("viral")) {
+    return "bg-cyan-400/10 text-cyan-400 border-cyan-400/20"
+  }
+  // Mid ratings → Sky
+  if (r.includes("good") || r.includes("moderate") || r.includes("fair") || r.includes("average")) {
+    return "bg-sky-400/10 text-sky-400 border-sky-400/20"
+  }
+  // Low ratings → Slate (neutral, not alarming)
+  return "bg-slate-400/10 text-slate-400 border-slate-400/20"
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function ViralAnalyzer() {
   const [file, setFile] = useState<File | null>(null)
-  const [preview, setPreview] = useState<string | null>(null)
-  const [caption, setCaption] = useState("")
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<AnalysisResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [preview, setPreview] = useState<string | null>(null)
+  const [caption, setCaption] = useState("")
   const [demoMode, setDemoMode] = useState(false)
-  const [dragOver, setDragOver] = useState(false)
+  const [showShareCard, setShowShareCard] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  // Memory leak cleanup
+  useEffect(() => {
+    return () => {
+      if (preview) URL.revokeObjectURL(preview)
+    }
+  }, [preview])
 
   const handleFile = useCallback((f: File) => {
     const MAX_SIZE = 10 * 1024 * 1024 // 10MB
@@ -224,17 +336,13 @@ export function ViralAnalyzer() {
 
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault()
-    setDragOver(false)
     const f = e.dataTransfer.files[0]
     if (f) handleFile(f)
   }
 
   const analyze = async () => {
-    if (!file && !demoMode) return
     setLoading(true)
     setError(null)
-    setResult(null)
-
     try {
       if (demoMode || !file) {
         await new Promise((r) => setTimeout(r, 2000))
@@ -242,7 +350,12 @@ export function ViralAnalyzer() {
         return
       }
 
-      const base64 = await toBase64(file)
+      let base64 = ""
+      if (file.type.startsWith("image/")) {
+        base64 = await resizeImage(file)
+      } else {
+        base64 = await toBase64(file)
+      }
 
       const res = await fetch("/api/analyze", {
         method: "POST",
@@ -269,7 +382,7 @@ export function ViralAnalyzer() {
       setResult(data)
     } catch (err) {
       if (err instanceof Error && err.message === "RATE_LIMIT_REACHED") {
-        setError("GEMINI API rate limit reached. Please wait a minute or enable 'Demo Mode' above to continue testing the UI.")
+        setError("GEMINI API rate limit reached. Please wait a minute before trying again.")
       } else if (err instanceof Error && err.message === "PAYLOAD_TOO_LARGE") {
         setError("The file is too large for the AI to process. Please upload a smaller video or image (under 10MB).")
       } else {
@@ -286,326 +399,320 @@ export function ViralAnalyzer() {
     setPreview(null)
     setCaption("")
     setError(null)
+    setShowShareCard(false)
   }
 
-  // ── Upload UI ──
+  const copyCaption = () => {
+    if (!result) return
+    const fullCaption = `${result.captionSuggestions.hook}\n\n${result.captionSuggestions.body}\n\n${result.captionSuggestions.hashtags.join(" ")}`
+    navigator.clipboard.writeText(fullCaption)
+    toast.success("Caption copied to clipboard!")
+  }
 
   if (!result) {
     return (
-      <div className="max-w-2xl mx-auto space-y-4">
-        {/* Demo mode toggle */}
-        <div className="flex items-center justify-end gap-2 text-sm text-muted-foreground">
-          <label className="flex items-center gap-2 cursor-pointer select-none">
-            <input
-              type="checkbox"
-              checked={demoMode}
-              onChange={(e) => setDemoMode(e.target.checked)}
-              className="accent-primary"
-            />
-            Demo mode (no API key needed)
-          </label>
-        </div>
+      <div suppressHydrationWarning className="max-w-2xl mx-auto space-y-6">
+        <Card className="border-dashed border-2 border-border/50 bg-card/50 hover:bg-card/80 transition-colors cursor-pointer group relative overflow-hidden"
+             onDragOver={(e) => e.preventDefault()}
+             onDrop={onDrop}
+             onClick={() => fileRef.current?.click()}>
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+          
 
-        <Card className="border-border/50">
-          <CardContent className="pt-6 space-y-4">
-            {/* Drop zone */}
-            <div
-              onClick={() => fileRef.current?.click()}
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={onDrop}
-              className={cn(
-                "border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-200",
-                dragOver
-                  ? "border-primary bg-primary/5"
-                  : "border-border hover:border-primary/50 hover:bg-muted/30"
-              )}
-            >
-              {preview ? (
-                <div className="space-y-3">
-                  {file?.type.startsWith("video/") ? (
-                    <video
-                      src={preview}
-                      controls
-                      muted
-                      className="max-w-full max-h-56 mx-auto rounded-lg object-cover"
-                    />
-                  ) : (
-                    <img
-                      src={preview}
-                      alt="Preview"
-                      className="max-w-full max-h-56 mx-auto rounded-lg object-cover"
-                    />
-                  )}
-                  <p className="text-sm text-muted-foreground">
-                    <span className="font-medium text-foreground">{file?.name}</span>
-                    {" "}— click to change
-                  </p>
+
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center space-y-4">
+            <input type="file" ref={fileRef} accept="video/*,image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f) }} />
+            
+            {preview ? (
+              <div className="relative w-full max-w-[240px] aspect-video rounded-xl overflow-hidden border border-border shadow-2xl">
+                {file?.type.startsWith("video/") ? (
+                  <video src={preview} className="w-full h-full object-cover" muted />
+                ) : (
+                  <img src={preview} className="w-full h-full object-cover" alt="Preview" />
+                )}
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Upload className="w-8 h-8 text-white" />
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="w-14 h-14 mx-auto rounded-full bg-muted flex items-center justify-center">
-                    <Upload className="w-6 h-6 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-base">Drop your video or image here</p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      MP4, MOV, JPG, PNG — up to 10 MB
-                    </p>
-                  </div>
-                  <p className="text-xs text-muted-foreground">or click to browse</p>
-                </div>
-              )}
-            </div>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="video/*,image/*"
-              className="hidden"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
-            />
-
-            {/* Caption */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
-                Caption{" "}
-                <span className="text-muted-foreground font-normal">(optional — paste yours for optimization)</span>
-              </label>
-              <textarea
-                value={caption}
-                onChange={(e) => setCaption(e.target.value)}
-                placeholder="Add your caption here to get specific rewrite suggestions..."
-                rows={3}
-                className="w-full rounded-lg border border-border bg-input px-3 py-2.5 text-sm resize-none placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/50 transition"
-              />
-            </div>
-
-            {/* CTA */}
-            <Button
-              onClick={analyze}
-              disabled={!file && !demoMode}
-              className="w-full h-12 text-base font-semibold gap-2"
-              size="lg"
-            >
-              {loading ? (
-                <>
-                  <span className="animate-spin">⚙️</span>
-                  Analyzing with GEMINI...
-                </>
-              ) : (
-                <>
-                  <Flame className="w-5 h-5" />
-                  Analyze Viral Potential
-                </>
-              )}
-            </Button>
-
-            {error && (
-              <div className="flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                {error}
+              </div>
+            ) : (
+              <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Upload className="w-10 h-10 text-primary" />
               </div>
             )}
+
+            <div className="space-y-1">
+              <p className="font-bold text-lg tracking-tight">Drop your content here</p>
+              <p className="text-sm text-muted-foreground">MP4, MOV, JPG, PNG — up to 10 MB</p>
+            </div>
+            {file && <p className="text-xs font-medium text-primary bg-primary/10 px-3 py-1 rounded-full">{file.name}</p>}
           </CardContent>
         </Card>
+
+        <div className="space-y-4">
+          <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+            <FileText className="w-4 h-4" />
+            Context (Optional)
+          </label>
+          <textarea
+            value={caption}
+            onChange={(e) => setCaption(e.target.value)}
+            placeholder="Paste your draft caption here for optimization..."
+            rows={3}
+            className="w-full rounded-xl border border-border/50 bg-card/50 px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+          />
+        </div>
+
+        <Button onClick={analyze} disabled={loading || !file} className="w-full h-14 text-lg font-bold gap-3 shadow-xl shadow-primary/20" size="lg">
+          {loading ? (
+            <><span className="animate-spin">⚙️</span> Analyzing with GEMINI...</>
+          ) : (
+            <><Flame className="w-6 h-6" /> Analyze Virality Potential</>
+          )}
+        </Button>
+
+        {error && (
+          <div className="flex items-start gap-3 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-4 text-sm text-destructive animate-in fade-in slide-in-from-top-1">
+            <AlertCircle className="w-5 h-5 shrink-0" />
+            <p className="font-medium">{error}</p>
+          </div>
+        )}
       </div>
     )
   }
 
   // ── Results UI ──
 
-  const bd = result.breakdown
-  const breakdownEntries: [string, number][] = [
-    ["Hook Strength", bd.hookStrength],
-    ["Pacing", bd.pacing],
-    ["Thumbnail Rating", bd.thumbnailRating],
-    ["Caption Optimization", bd.captionOptimization],
-    ["Emotional Appeal", bd.emotionalAppeal],
-    ["Trend Alignment", bd.trendAlignment],
-  ]
-
   return (
-    <div className="max-w-4xl mx-auto space-y-4">
-      {/* Header bar */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
+    <div suppressHydrationWarning className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-700 relative">
+      {/* Share Modal */}
+      {showShareCard && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-6 overflow-y-auto">
+          <div className="relative w-full max-w-lg animate-in zoom-in-95 duration-300">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => setShowShareCard(false)}
+              className="absolute -top-12 right-0 text-white hover:bg-white/20"
+            >
+              <X className="w-6 h-6" />
+            </Button>
+            
+            <Card className="border-border/50 shadow-2xl overflow-hidden bg-background">
+              <div className="bg-primary/10 px-6 py-4 border-b border-border/50 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-cyan-400" />
+                  <span className="font-black tracking-tighter uppercase">Viral Report</span>
+                </div>
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">GEMINI AI</span>
+              </div>
+              <CardContent className="p-8 text-center space-y-8">
+                <ScoreRing score={result.score} />
+                <div className="space-y-2">
+                  <h3 className="text-2xl font-black tracking-tighter uppercase">{result.hookAnalysis.rating} Potential</h3>
+                  <p className="text-sm text-muted-foreground">This content is {result.score}% ready to go viral.</p>
+                </div>
+                <div className="space-y-3 pt-4 border-t border-border/50">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-cyan-400 text-left">Top Action Items</p>
+                  {result.actionPlan.slice(0, 3).map((item, i) => (
+                    <div key={i} className="flex gap-3 text-left bg-muted/50 p-3 rounded-xl">
+                      <span className="text-cyan-400 font-black">0{i+1}</span>
+                      <p className="text-xs font-bold leading-tight">{item}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="pt-4 flex items-center justify-center gap-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                  <span>#ViralAnalyzer</span>
+                  <span>•</span>
+                  <span>#8xEngineer</span>
+                </div>
+              </CardContent>
+              <div className="p-4 bg-cyan-500 text-white text-center text-xs font-bold flex items-center justify-center gap-2">
+                 Screenshot to share! <Download className="w-3 h-3" />
+              </div>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold tracking-tight">Your Virality Report</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {demoMode ? "Demo content" : file?.name}
+          <h2 className="text-3xl font-black tracking-tighter">Analysis Complete</h2>
+          <p className="text-sm text-muted-foreground font-medium uppercase tracking-widest mt-1">
+            {demoMode ? "Sample Analysis Report" : `Report: ${file?.name}`}
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={reset} className="gap-2">
-          <RotateCcw className="w-4 h-4" />
-          Analyze another
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setShowShareCard(true)} className="rounded-xl border-border/50 hover:bg-muted font-bold gap-2">
+            <Share2 className="w-4 h-4" />
+            Share
+          </Button>
+          <Button variant="outline" onClick={reset} className="rounded-xl border-border/50 hover:bg-muted font-bold gap-2">
+            <RotateCcw className="w-4 h-4" />
+            Reset
+          </Button>
+        </div>
       </div>
 
-      {/* Score hero */}
-      <Card className="border-border/50">
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-8 flex-wrap">
-            <div className="text-center space-y-2">
-              <ScoreRing score={result.viralityScore} />
-              <p className={cn("text-sm font-semibold", scoreColor(result.viralityScore))}>
-                {result.scoreLabel}
-              </p>
-            </div>
-            <div className="flex-1 min-w-[220px]">
-              <p className="text-sm font-medium mb-4">Score breakdown</p>
-              {breakdownEntries.map(([label, val]) => (
-                <MiniBar key={label} label={label} value={val} />
-              ))}
-            </div>
+      <div className="grid lg:grid-cols-3 gap-6">
+        {/* Score Card */}
+        <Card className="lg:col-span-1 border-border/50 bg-card/50 overflow-hidden relative min-h-[420px] flex flex-col">
+          <div className="absolute top-0 right-0 p-4">
+            <Sparkles className="w-6 h-6 text-cyan-400/20" />
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Two-column grid */}
-      <div className="grid md:grid-cols-2 gap-4">
-        {/* Hook Analysis */}
-        <Card className="border-border/50">
-          <CardHeader className="pb-3 pt-5 px-5">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Zap className="w-4 h-4 text-primary" />
-              Hook Analysis
-              <span className="text-xs text-muted-foreground font-normal">first 3 seconds</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-5 pb-5 space-y-4">
-            <span
-              className={cn(
-                "inline-block px-3 py-1 rounded-full text-xs font-semibold",
-                hookBadgeClass(result.hookAnalysis.rating)
-              )}
-            >
-              {result.hookAnalysis.rating}
-            </span>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              {result.hookAnalysis.summary}
-            </p>
-            <ul className="space-y-2">
-              {result.hookAnalysis.suggestions.map((s, i) => (
-                <li key={i} className="flex gap-2 text-sm">
-                  <ArrowRight className="w-3.5 h-3.5 mt-0.5 text-primary shrink-0" />
-                  <span>{s}</span>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-
-        {/* Caption */}
-        <Card className="border-border/50">
-          <CardHeader className="pb-3 pt-5 px-5">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <ListChecks className="w-4 h-4 text-primary" />
-              Caption Optimization
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-5 pb-5 space-y-4">
-            <ul className="space-y-1.5">
-              {result.captionSuggestions.issues.map((issue, i) => (
-                <li key={i} className="flex gap-2 text-sm text-muted-foreground">
-                  <XCircle className="w-3.5 h-3.5 mt-0.5 text-rose-400 shrink-0" />
-                  {issue}
-                </li>
-              ))}
-            </ul>
-            <div className="rounded-lg bg-muted/50 border border-border/50 px-4 py-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                Suggested caption
-              </p>
-              <p className="text-sm leading-relaxed">
-                {result.captionSuggestions.rewrittenCaption}
-              </p>
+          <CardContent className="pt-12 pb-8 flex-1 flex flex-col items-center justify-center space-y-10">
+            <div className="scale-110">
+              <ScoreRing score={result.score} />
             </div>
-            <div className="flex flex-wrap gap-1.5">
-              {result.captionSuggestions.hashtagRecommendations.map((tag, i) => (
-                <span
-                  key={i}
-                  className="px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20"
-                >
-                  {tag}
-                </span>
-              ))}
+            <div className="w-full space-y-4 pt-4">
+              <MiniBar label="Hook" value={result.breakdown.hook} tooltip="The effectiveness of the first 3 seconds" />
+              <MiniBar label="Pacing" value={result.breakdown.pacing} tooltip="Maintaining viewer attention throughout" />
+              <MiniBar label="Visuals" value={result.breakdown.visuals} tooltip="Quality, lighting, and composition" />
+              <MiniBar label="Emotional" value={result.breakdown.emotionalAppeal} tooltip="Connection with the audience" />
             </div>
           </CardContent>
         </Card>
 
-        {/* Trending Audio */}
-        <Card className="border-border/50">
-          <CardHeader className="pb-3 pt-5 px-5">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Music className="w-4 h-4 text-primary" />
-              Trending Audio Picks
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-5 pb-5 space-y-2">
-            {result.trendingAudio.map((audio, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg bg-muted/40 border border-border/40"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium truncate">{audio.name}</p>
-                  <p className="text-xs text-muted-foreground">{audio.uses} uses</p>
+        <div className="lg:col-span-2 space-y-6">
+          {/* Timeline & Hook */}
+          <div className="grid md:grid-cols-2 gap-6">
+            <Card className="border-border/50 bg-card/50">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-black uppercase tracking-widest text-cyan-400 flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  Visual Timeline
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {result.timeline.map((item, i) => (
+                  <div key={i} className="flex gap-3 relative group">
+                    {i !== result.timeline.length - 1 && <div className="absolute left-[7px] top-4 bottom-[-16px] w-[2px] bg-border/50" />}
+                    <div className={cn("w-4 h-4 rounded-full border-2 border-background z-10 shrink-0 mt-1 shadow-[0_0_8px_rgba(0,0,0,0.5)]", item.impact === "positive" ? "bg-cyan-400" : "bg-slate-400")} />
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] font-black tabular-nums text-muted-foreground">{item.timestamp}</span>
+                      <p className="text-sm font-medium leading-snug">{item.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/50 bg-card/50">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-black uppercase tracking-widest text-cyan-400 flex items-center gap-2">
+                  <Zap className="w-4 h-4" />
+                  Hook Rating
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className={cn("px-4 py-3 rounded-xl border font-black text-center text-xl shadow-inner", hookBadgeClass(result.hookAnalysis.rating))}>
+                  {result.hookAnalysis.rating}
                 </div>
-                <span className="text-xs font-semibold text-emerald-400 whitespace-nowrap shrink-0">
-                  {audio.trend}
-                </span>
+                <p className="text-sm text-muted-foreground font-medium leading-relaxed italic">
+                  "{result.hookAnalysis.feedback}"
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Action Plan */}
+          <Card className="border-border/50 bg-cyan-400/5 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-8 opacity-10">
+              <CheckCircle2 className="w-32 h-32 text-cyan-400" />
+            </div>
+            <CardHeader>
+              <CardTitle className="text-sm font-black uppercase tracking-widest text-cyan-400 flex items-center gap-2">
+                <TrendingUp className="w-4 h-4" />
+                Strategic Action Plan
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid sm:grid-cols-2 gap-4">
+                {result.actionPlan.map((step, i) => (
+                  <div key={i} className="flex gap-3 p-3 rounded-xl bg-background/50 border border-border/50 hover:border-cyan-400/30 transition-colors group">
+                    <span className="text-lg font-black text-cyan-400/40 shrink-0">{String(i + 1).padStart(2, '0')}</span>
+                    <p className="text-sm font-bold leading-tight">{step}</p>
+                  </div>
+                ))}
               </div>
-            ))}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* Caption Suggestions */}
+        <Card className="border-border/50 bg-card/50 relative overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-sm font-black uppercase tracking-widest text-cyan-400 flex items-center gap-2">
+              <ListChecks className="w-4 h-4" />
+              Caption Optimizer
+            </CardTitle>
+            <Button variant="ghost" size="sm" onClick={copyCaption} className="h-8 rounded-lg font-bold gap-2 text-cyan-400 hover:text-cyan-400 hover:bg-cyan-400/10">
+              <Copy className="w-3.5 h-3.5" />
+              Copy
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-4">
+              <div className="p-4 rounded-xl bg-muted/50 border border-border/50 space-y-4">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-cyan-400">Winning Hook</span>
+                  <p className="text-sm font-bold">{result.captionSuggestions.hook}</p>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">The Body</span>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{result.captionSuggestions.body}</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {result.captionSuggestions.hashtags.map((tag, i) => (
+                  <span key={i} className="px-3 py-1 rounded-lg bg-cyan-400/10 text-cyan-400 text-xs font-black border border-cyan-400/20">
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        {/* Competitor + Action Plan */}
-        <Card className="border-border/50">
-          <CardHeader className="pb-3 pt-5 px-5">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Users className="w-4 h-4 text-primary" />
-              Competitor Insights
+        {/* Transcript Analysis */}
+        <Card className="border-border/50 bg-card/50">
+          <CardHeader>
+            <CardTitle className="text-sm font-black uppercase tracking-widest text-cyan-400 flex items-center gap-2">
+              <Music className="w-4 h-4" />
+              Script & Audio Analysis
             </CardTitle>
           </CardHeader>
-          <CardContent className="px-5 pb-5 space-y-4">
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              {result.competitorInsights}
-            </p>
-            <div>
-              <p className="text-sm font-medium mb-2">Your action plan</p>
-              <ol className="space-y-2">
-                {result.actionPlan.map((action, i) => (
-                  <li key={i} className="flex gap-2 text-sm">
-                    <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 text-primary shrink-0" />
-                    {action}
+          <CardContent className="grid sm:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <span className="text-[10px] font-black uppercase tracking-widest text-cyan-400 flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" /> Strengths
+              </span>
+              <ul className="space-y-2">
+                {result.transcriptAnalysis.strengths.map((s, i) => (
+                  <li key={i} className="flex gap-2 text-xs font-bold leading-tight group">
+                    <ChevronRight className="w-3 h-3 mt-0.5 text-cyan-400 shrink-0 transition-transform group-hover:translate-x-1" />
+                    {s}
                   </li>
                 ))}
-              </ol>
+              </ul>
+            </div>
+            <div className="space-y-3">
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" /> To Improve
+              </span>
+              <ul className="space-y-2">
+                {result.transcriptAnalysis.improvements.map((s, i) => (
+                  <li key={i} className="flex gap-2 text-xs font-bold leading-tight group">
+                    <ChevronRight className="w-3 h-3 mt-0.5 text-slate-400 shrink-0 transition-transform group-hover:translate-x-1" />
+                    {s}
+                  </li>
+                ))}
+              </ul>
             </div>
           </CardContent>
         </Card>
       </div>
-
-      {/* Content preview (if real upload) */}
-      {preview && !demoMode && (
-        <Card className="border-border/50">
-          <CardContent className="pt-5 pb-5">
-            <p className="text-sm font-medium mb-3">Analyzed content</p>
-            {file?.type.startsWith("video/") ? (
-              <video
-                src={preview}
-                controls
-                className="w-full max-h-72 rounded-lg object-contain"
-              />
-            ) : (
-              <img
-                src={preview}
-                alt="Uploaded content"
-                className="w-full max-h-72 rounded-lg object-contain"
-              />
-            )}
-          </CardContent>
-        </Card>
-      )}
     </div>
   )
 }

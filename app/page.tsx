@@ -10,7 +10,7 @@ export default function HomePage() {
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-border/50">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent pointer-events-none" />
-        <div className="container mx-auto px-6 py-16 text-center">
+        <div className="container mx-auto px-6 pt-16 pb-6 text-center">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
             <Flame className="w-4 h-4" />
             AI-Powered Virality Scoring
@@ -41,7 +41,7 @@ export default function HomePage() {
       </section>
 
       {/* Analyzer */}
-      <section className="container mx-auto px-6 py-12">
+      <section className="container mx-auto px-6 py-4 pb-16">
         <ViralAnalyzer />
       </section>
     </div>

@@ -2,22 +2,34 @@
 
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { User, Menu, X, Sparkles } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { useSubscription } from "@/contexts/subscription-context"
 import { useState } from "react"
+import { toast } from "sonner"
 
 export function Navigation() {
   const pathname = usePathname()
   const { user, isLoading } = useAuth()
   const { isPro } = useSubscription()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const router = useRouter()
+
+  const handlePricingClick = (e: React.MouseEvent) => {
+    if (user) {
+      e.preventDefault()
+      toast.info("💳 Stripe payments coming soon!", {
+        description: "Secure payment processing via Stripe is in progress. Upgrade features will be available soon.",
+        duration: 5000,
+      })
+    }
+  }
 
   return (
     <>
       {/* Mobile Navigation */}
-      <nav className="md:hidden border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 w-full">
+      <nav suppressHydrationWarning className="md:hidden border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 w-full">
         <div className="container mx-auto px-6 py-5">
           <div className="flex items-center justify-between">
             <Link
@@ -53,13 +65,8 @@ export function Navigation() {
                       Profile
                     </Link>
                     {!isPro && (
-                      <Button className="w-full" asChild>
-                        <Link
-                          href="/upgrade"
-                          onClick={() => setMobileMenuOpen(false)}
-                        >
-                          Upgrade to Pro
-                        </Link>
+                      <Button className="w-full" onClick={(e) => { setMobileMenuOpen(false); handlePricingClick(e) }}>
+                        Upgrade to Pro
                       </Button>
                     )}
                   </>
@@ -89,7 +96,7 @@ export function Navigation() {
       </nav>
 
       {/* Desktop Navigation */}
-      <nav className="hidden md:block border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+      <nav suppressHydrationWarning className="hidden md:block border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
         <div className="container mx-auto px-6 py-5">
           <div className="flex items-center justify-between">
             <Link
@@ -117,10 +124,13 @@ export function Navigation() {
                         <User className="w-5 h-5" />
                       </Link>
                       {!isPro && (
-                        <Button variant="outline" size="sm" className="text-sm bg-transparent" asChild>
-                          <Link href="/upgrade">
-                            Upgrade
-                          </Link>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-sm bg-transparent"
+                          onClick={handlePricingClick}
+                        >
+                          Upgrade
                         </Button>
                       )}
                     </div>
